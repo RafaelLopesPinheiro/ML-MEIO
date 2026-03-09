@@ -1,0 +1,73 @@
+
+# ============================================================
+# Configuration for Walmart MEIO Stochastic Optimization
+# ============================================================
+
+data:
+  train_path: "data/raw/train.csv"
+  test_path: "data/raw/test.csv"
+  features_path: "data/raw/features.csv"
+  stores_path: "data/raw/stores.csv"
+  # Echelon mapping: stores act as downstream nodes;
+  # virtual DC is the upstream aggregation
+  n_echelons: 2
+  # Subset for faster experimentation (None = all)
+  store_subset: [1, 2, 3, 4, 5]
+  dept_subset: [1, 2, 3, 7, 8, 9, 11]
+  forecast_horizon: 4           # weeks ahead
+  rolling_window: 52            # weeks for rolling features
+  test_weeks: 26                # out-of-sample evaluation period
+
+demand:
+  forecaster: "ngboost"         # options: quantile_regression | ngboost | conformal
+  quantiles: [0.05, 0.25, 0.50, 0.75, 0.90, 0.95]
+  conformal_alpha: 0.10         # miscoverage rate -> 90% coverage
+  ngboost:
+    n_estimators: 500
+    learning_rate: 0.05
+    minibatch_frac: 0.8
+    col_sample: 0.8
+    distribution: "normal"      # options: normal | lognormal
+  quantile_regression:
+    n_estimators: 300
+    max_depth: 6
+    learning_rate: 0.05
+    subsample: 0.8
+
+optimization:
+  method: "stochastic_milp"     # options: stochastic_milp | chance_constrained
+  n_scenarios: 200              # Monte Carlo scenarios from demand distribution
+  service_level: 0.95           # alpha-service level (type-2 fill rate)
+  cycle_service_level: 0.90     # type-1 cycle service level
+  lead_time_dc_to_store: 1      # weeks
+  lead_time_supplier_to_dc: 2   # weeks
+  review_period: 1              # weeks (periodic review)
+  # Cost parameters (USD per unit per week, normalized)
+  holding_cost_store: 0.20
+  holding_cost_dc: 0.10
+  backorder_cost: 5.00
+  replenishment_fixed_cost: 100.0
+  replenishment_variable_cost: 0.50
+  max_order_multiplier: 5.0     # max order = multiplier * mean demand
+  solver: "CBC"                 # PuLP solver: CBC | GLPK | GUROBI | CPLEX
+
+evaluation:
+  metrics:
+    - fill_rate
+    - cycle_service_level
+    - total_cost
+    - holding_cost
+    - backorder_cost
+    - replenishment_cost
+    - interval_coverage
+    - interval_width
+    - winkler_score
+  compare_baseline: true
+
+output:
+  results_dir: "results/"
+  figures_dir: "results/figures/"
+  log_level: "INFO"
+
+reproducibility:
+  random_seed: 42
